@@ -72,9 +72,9 @@ export function PromptCard({ prompt, userResponse }: PromptCardProps) {
     setShowNote(true);
   };
 
-  const handleNoteSave = (newNote: string) => {
+  const handleNoteSave = async (newNote: string) => {
     setNote(newNote);
-    saveResponse({ note: newNote });
+    await saveResponse({ note: newNote });
   };
 
   return (
@@ -132,10 +132,6 @@ export function PromptCard({ prompt, userResponse }: PromptCardProps) {
             onSave={handleNoteSave}
             onClose={() => setShowNote(false)}
           />
-        )}
-
-        {saving && (
-          <p className="text-xs text-warm-400 mt-3 text-center">Saving...</p>
         )}
 
         {!session?.user?.id && (

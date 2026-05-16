@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronDown } from "lucide-react";
 import {
@@ -15,6 +15,48 @@ interface BibleReaderModalProps {
   isOpen: boolean;
   onClose: () => void;
   passageRef: string;
+}
+
+function renderVerseParts(parts: unknown[]): string {
+  return parts
+    .map((part) => {
+      if (typeof part === "string") return part;
+      if (part && typeof part === "object" && "text" in part) {
+        const p = part as { text: string; poem?: number };
+        const prefix = p.poem ? '<span class="block ml-4">' : "";
+        const suffix = p.poem ? "</span>" : "";
+        return `${prefix}${p.text}${suffix}`;
+      }
+      if (
+        part &&
+        typeof part === "object" &&
+        "lineBreak" in (part as Record<string, unknown>)
+      ) {
+        return "<br>";
+      }
+      return "";
+    })
+    .join(" ");
+}
+
+function renderChapterContent(content: unknown[]): string {
+  return content
+    .map((item) => {
+      if (!item || typeof item !== "object") return "";
+      const i = item as Record<string, unknown>;
+      if (i.type === "heading") {
+        const text = Array.isArray(i.content) ? i.content[0] : "";
+        return `<h3 class="font-semibold text-warm-800 text-lg mt-6 mb-3">${text}</h3>`;
+      }
+      if (i.type === "verse") {
+        const verseNum = i.number ?? "";
+        const parts = Array.isArray(i.content) ? i.content : [];
+        return `<p class="mb-2 leading-relaxed"><sup class="text-warm-400 text-xs mr-1 select-none">${verseNum}</sup>${renderVerseParts(parts)}</p>`;
+      }
+      if (i.type === "line_break") return "<br>";
+      return "";
+    })
+    .join("\n");
 }
 
 export function BibleReaderModal({
@@ -60,34 +102,40 @@ export function BibleReaderModal({
     verse = verseMatch[3];
   }
 
+  const loadChapter = useCallback(
+    async (trans: TranslationId, book: string, ch: string, vs: string) => {
+      const bookId = getOsisBookId(book);
+      if (!bookId) {
+        setError("Could not find this book");
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      setContent(null);
+
+      try {
+        const res = await fetch(getBibleChapterUrl(trans, bookId, parseInt(ch)));
+        if (!res.ok) throw new Error("Failed to fetch");
+        const data = await res.json();
+        const html = renderChapterContent(data.chapter.content);
+        setContent(html);
+      } catch {
+        setError(
+          "Could not load this passage. Try another translation."
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     if (!isOpen || !passageRef || !verseMatch) return;
-
-    setLoading(true);
-    setError(null);
-    setContent(null);
-
-    const bookId = getOsisBookId(verseMatch[1].trim());
-    if (!bookId) {
-      setError("Could not find this book");
-      setLoading(false);
-      return;
-    }
-
-    fetch(getBibleChapterUrl(translation, bookId, parseInt(verseMatch[2])))
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch passage");
-        return res.json();
-      })
-      .then((data) => {
-        setContent(data.data.content);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError("Could not load this passage. Try another translation.");
-        setLoading(false);
-      });
-  }, [isOpen, passageRef, translation, verseMatch]);
+    loadChapter(translation, verseMatch[1].trim(), verseMatch[2], verseMatch[3]);
+  }, [isOpen, passageRef, translation, verseMatch, loadChapter]);
 
   const translations = getTranslations();
 
@@ -187,11 +235,6 @@ export function BibleReaderModal({
                     ),
                   }}
                 />
-              )}
-              {!loading && !error && !content && (
-                <p className="text-warm-400 text-center py-8 text-sm">
-                  Select a passage reference to begin reading.
-                </p>
               )}
             </div>
           </motion.div>
