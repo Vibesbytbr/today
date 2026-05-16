@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronDown } from "lucide-react";
 import {
@@ -59,6 +59,37 @@ function renderChapterContent(content: unknown[]): string {
     .join("\n");
 }
 
+function parseRef(
+  ref: string
+): { book: string; chapter: string; verse: string } | null {
+  const match = ref.match(/^(\d?\s?\w+)\s+(\d+):(\d+)/i);
+  if (!match) return null;
+  return { book: match[1].trim(), chapter: match[2], verse: match[3] };
+}
+
+function formatBookName(raw: string): string {
+  const booksMap: Record<string, string> = {
+    "1 samuel": "1 Samuel",
+    "2 samuel": "2 Samuel",
+    "1 kings": "1 Kings",
+    "2 kings": "2 Kings",
+    "1 chronicles": "1 Chronicles",
+    "2 chronicles": "2 Chronicles",
+    "1 corinthians": "1 Corinthians",
+    "2 corinthians": "2 Corinthians",
+    "1 thessalonians": "1 Thessalonians",
+    "2 thessalonians": "2 Thessalonians",
+    "1 timothy": "1 Timothy",
+    "2 timothy": "2 Timothy",
+    "1 peter": "1 Peter",
+    "2 peter": "2 Peter",
+    "1 john": "1 John",
+    "2 john": "2 John",
+    "3 john": "3 John",
+  };
+  return booksMap[raw.toLowerCase()] || raw;
+}
+
 export function BibleReaderModal({
   isOpen,
   onClose,
@@ -69,73 +100,50 @@ export function BibleReaderModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTranslations, setShowTranslations] = useState(false);
+  const fetchId = useRef(0);
 
-  const verseMatch = passageRef.match(/^(\d?\s?\w+)\s+(\d+):(\d+)/i);
-  let bookName = "";
-  let chapter = "";
-  let verse = "";
-
-  if (verseMatch) {
-    const booksMap: Record<string, string> = {
-      "1 samuel": "1 Samuel",
-      "2 samuel": "2 Samuel",
-      "1 kings": "1 Kings",
-      "2 kings": "2 Kings",
-      "1 chronicles": "1 Chronicles",
-      "2 chronicles": "2 Chronicles",
-      "1 corinthians": "1 Corinthians",
-      "2 corinthians": "2 Corinthians",
-      "1 thessalonians": "1 Thessalonians",
-      "2 thessalonians": "2 Thessalonians",
-      "1 timothy": "1 Timothy",
-      "2 timothy": "2 Timothy",
-      "1 peter": "1 Peter",
-      "2 peter": "2 Peter",
-      "1 john": "1 John",
-      "2 john": "2 John",
-      "3 john": "3 John",
-    };
-
-    const rawBook = verseMatch[1].trim();
-    bookName = booksMap[rawBook.toLowerCase()] || rawBook;
-    chapter = verseMatch[2];
-    verse = verseMatch[3];
-  }
-
-  const loadChapter = useCallback(
-    async (trans: TranslationId, book: string, ch: string, vs: string) => {
-      const bookId = getOsisBookId(book);
-      if (!bookId) {
-        setError("Could not find this book");
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-      setContent(null);
-
-      try {
-        const res = await fetch(getBibleChapterUrl(trans, bookId, parseInt(ch)));
-        if (!res.ok) throw new Error("Failed to fetch");
-        const data = await res.json();
-        const html = renderChapterContent(data.chapter.content);
-        setContent(html);
-      } catch {
-        setError(
-          "Could not load this passage. Try another translation."
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+  const parsed = useMemo(() => parseRef(passageRef), [passageRef]);
+  const displayBook = parsed ? formatBookName(parsed.book) : "";
+  const displayChapter = parsed?.chapter ?? "";
+  const displayVerse = parsed?.verse ?? "";
 
   useEffect(() => {
-    if (!isOpen || !passageRef || !verseMatch) return;
-    loadChapter(translation, verseMatch[1].trim(), verseMatch[2], verseMatch[3]);
-  }, [isOpen, passageRef, translation, verseMatch, loadChapter]);
+    if (!isOpen || !parsed) return;
+
+    const id = ++fetchId.current;
+    const bookId = getOsisBookId(parsed.book);
+
+    if (!bookId) {
+      setError("Could not find this book");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setContent(null);
+
+    fetch(
+      getBibleChapterUrl(translation, bookId, parseInt(parsed.chapter))
+    )
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch");
+        return res.json();
+      })
+      .then((data) => {
+        if (id !== fetchId.current) return;
+        const html = renderChapterContent(data.chapter.content);
+        setContent(html);
+      })
+      .catch(() => {
+        if (id !== fetchId.current) return;
+        setError("Could not load this passage. Try another translation.");
+      })
+      .finally(() => {
+        if (id !== fetchId.current) return;
+        setLoading(false);
+      });
+  }, [isOpen, passageRef, translation, parsed]);
 
   const translations = getTranslations();
 
@@ -162,11 +170,11 @@ export function BibleReaderModal({
             <div className="flex items-center justify-between p-4 border-b border-warm-100">
               <div>
                 <h2 className="text-lg font-semibold text-warm-800">
-                  {bookName} {chapter}
+                  {displayBook} {displayChapter}
                 </h2>
-                {verse && (
+                {displayVerse && (
                   <p className="text-sm text-warm-500">
-                    Verse {verse} highlighted
+                    Verse {displayVerse} highlighted
                   </p>
                 )}
               </div>
@@ -227,7 +235,7 @@ export function BibleReaderModal({
                   dangerouslySetInnerHTML={{
                     __html: content.replace(
                       new RegExp(
-                        `verse-${verse}\\b|data-verse="${verse}"`,
+                        `verse-${displayVerse}\\b|data-verse="${displayVerse}"`,
                         "g"
                       ),
                       (match) =>
