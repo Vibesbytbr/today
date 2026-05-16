@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --color-warm-50: #fafaf8;
+  --color-warm-100: #f5f0eb;
+  --color-warm-200: #e8dfd6;
+  --color-warm-300: #d4c5b8;
+  --color-warm-400: #b8a392;
+  --color-warm-500: #9c8775;
+  --color-warm-600: #826e5d;
+  --color-warm-700: #6b594b;
+  --color-warm-800: #5a4b3f;
+  --color-warm-900: #4d4036;
+  --color-warm-950: #2a221c;
+  --color-sage-50: #f6f7f4;
+  --color-sage-100: #e3e7de;
+  --color-sage-200: #c7d0be;
+  --color-sage-300: #a3b298;
+  --color-sage-400: #7f9374;
+  --color-sage-500: #4a6741;
+  --color-sage-600: #3d5536;
+  --color-sage-700: #31442c;
+  --color-sage-800: #283724;
+  --color-sage-900: #212e1e;
+  --color-sage-950: #111a0f;
+  --color-ember-50: #fdf6f3;
+  --color-ember-100: #faeae2;
+  --color-ember-200: #f5d3c4;
+  --color-ember-300: #edb49d;
+  --color-ember-400: #e38d6f;
+  --color-ember-500: #c25a3c;
+  --color-ember-600: #a84a30;
+  --color-ember-700: #8c3c27;
+  --color-ember-800: #753425;
+  --color-ember-900: #632f23;
+  --color-ember-950: #36150d;
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+}
+
+body {
+  background-color: var(--color-warm-50);
+  color: var(--color-warm-950);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.prose-scripture {
+  font-family: var(--font-lora), ui-serif, Georgia, serif;
+  line-height: 1.75;
+}
