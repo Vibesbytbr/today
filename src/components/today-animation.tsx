@@ -8,10 +8,15 @@ export function TodayAnimation({ onDone }: { onDone: () => void }) {
   const letters = "Today...".split("");
 
   useEffect(() => {
+    if (sessionStorage.getItem("visited")) {
+      onDone();
+      return;
+    }
+    sessionStorage.setItem("visited", "true");
     const timer = setTimeout(() => {
       setVisible(false);
       onDone();
-    }, 1800);
+    }, 1200);
     return () => clearTimeout(timer);
   }, [onDone]);
 

@@ -1,56 +1,81 @@
-"use client";
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { getTodaySortOrder } from "@/lib/prompt-cycle";
+import { PageClient } from "./page-client";
 
-import { useEffect, useState, useCallback } from "react";
-import { TodayAnimation } from "@/components/today-animation";
-import { PromptCard } from "@/components/prompt-card";
-import type { DailyPrompt, UserResponse } from "@/types";
+export default async function Home() {
+  try {
+    const session = await auth();
 
-export default function Home() {
-  const [animationDone, setAnimationDone] = useState(false);
-  const [prompt, setPrompt] = useState<DailyPrompt | null>(null);
-  const [userResponse, setUserResponse] = useState<UserResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  const fetchPrompt = useCallback(async () => {
-    try {
-      const res = await fetch("/api/prompt/today");
-      const data = await res.json();
-      if (data.prompt) {
-        setPrompt(data.prompt);
-        setUserResponse(data.userResponse ?? null);
+    let prompt = await prisma.dailyPrompt.findUnique({
+      where: { date: today },
+    });
+
+    if (!prompt) {
+      const sortOrder = getTodaySortOrder();
+      const seed = await prisma.promptSeed.findUnique({
+        where: { sortOrder },
+      });
+
+      if (seed) {
+        prompt = await prisma.dailyPrompt.create({
+          data: {
+            date: today,
+            actionPrompt: seed.actionPrompt,
+            scriptureRef: seed.scriptureRef,
+            scriptureText: seed.scriptureText,
+            sortOrder: seed.sortOrder,
+          },
+        });
       }
-    } catch (e) {
-      console.error("Failed to fetch prompt:", e);
-    } finally {
-      setLoading(false);
     }
-  }, []);
 
-  useEffect(() => {
-    fetchPrompt();
-  }, [fetchPrompt]);
+    let userResponse = null;
+    if (session?.user?.id && prompt) {
+      userResponse = await prisma.userResponse.findUnique({
+        where: {
+          userId_promptId: {
+            userId: session.user.id,
+            promptId: prompt.id,
+          },
+        },
+      });
+    }
 
-  const handleAnimationDone = useCallback(() => {
-    setAnimationDone(true);
-  }, []);
-
-  return (
-    <>
-      {!animationDone && <TodayAnimation onDone={handleAnimationDone} />}
-
-      <div className="min-h-screen flex items-center justify-center pb-16">
-        {loading ? (
-          <div className="flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-sage-400 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : prompt ? (
-          <PromptCard prompt={prompt} userResponse={userResponse} />
-        ) : (
-          <p className="text-warm-400 text-sm">
-            Could not load today&rsquo;s prompt.
-          </p>
-        )}
-      </div>
-    </>
-  );
+    return (
+      <PageClient
+        prompt={
+          prompt
+            ? {
+                id: prompt.id,
+                date: prompt.date.toISOString(),
+                actionPrompt: prompt.actionPrompt,
+                scriptureRef: prompt.scriptureRef,
+                scriptureText: prompt.scriptureText,
+                sortOrder: prompt.sortOrder,
+              }
+            : null
+        }
+        userResponse={
+          userResponse
+            ? {
+                id: userResponse.id,
+                userId: userResponse.userId,
+                promptId: userResponse.promptId,
+                status: userResponse.status as "DONE" | "HARD" | "NOT_RELEVANT" | null,
+                note: userResponse.note,
+                createdAt: userResponse.createdAt.toISOString(),
+                updatedAt: userResponse.updatedAt.toISOString(),
+              }
+            : null
+        }
+      />
+    );
+  } catch (error) {
+    console.error("Failed to fetch home page data:", error);
+    return <PageClient prompt={null} userResponse={null} />;
+  }
 }
