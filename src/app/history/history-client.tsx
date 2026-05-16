@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
-import { ArrowLeft, LogOut } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { HistoryList } from "@/components/history-list";
 import { FilterBar } from "@/components/filter-bar";
@@ -33,41 +33,39 @@ export function HistoryClient() {
 
   return (
     <motion.div
-      className="max-w-lg mx-auto px-4 py-8"
+      className="max-w-lg mx-auto px-5 pt-20 pb-12"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
     >
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-8">
         <Link
           href="/"
           className="flex items-center gap-1 text-sm text-warm-400 hover:text-warm-600 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back
         </Link>
-        <h1 className="text-2xl font-light text-warm-900">Your History</h1>
+        <h1 className="text-xl font-light text-warm-800">Your History</h1>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-5">
         <FilterBar current={filter} onChange={setFilter} />
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-8">
-          <div className="w-6 h-6 border-2 border-sage-400 border-t-transparent rounded-full animate-spin" />
+        <div className="flex justify-center py-12">
+          <div className="w-5 h-5 border-2 border-sage-400 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
         <HistoryList prompts={filtered} />
       )}
 
       {session?.user && (
-        <div className="mt-8 text-right">
+        <div className="mt-10 text-center">
           <button
             onClick={() => signOut()}
-            className="inline-flex items-center gap-1.5 text-xs text-warm-400 hover:text-warm-600 transition-colors"
+            className="text-xs text-warm-300 hover:text-warm-500 transition-colors"
           >
-            <LogOut className="w-3 h-3" />
             Sign out
           </button>
         </div>

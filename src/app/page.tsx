@@ -38,7 +38,7 @@ export default function Home() {
     <>
       {!animationDone && <TodayAnimation onDone={handleAnimationDone} />}
 
-      <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center pb-16">
+      <div className="min-h-screen flex items-center justify-center pb-16">
         {loading ? (
           <div className="flex items-center justify-center">
             <div className="w-6 h-6 border-2 border-sage-400 border-t-transparent rounded-full animate-spin" />
