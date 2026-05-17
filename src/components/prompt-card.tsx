@@ -7,6 +7,7 @@ import { ActionButtons } from "./action-buttons";
 import { NoteEditor } from "./note-editor";
 import { BibleReaderModal } from "./bible-reader-modal";
 import { saveResponse } from "@/lib/storage";
+import { formatDateKey } from "@/lib/prompts-data";
 import type { PromptSeed } from "@/lib/prompts-data";
 import type { SavedResponse } from "@/lib/storage";
 import type { PromptStatus } from "@/types";
@@ -24,7 +25,7 @@ export function PromptCard({ prompt, initialResponse }: PromptCardProps) {
   const [showNote, setShowNote] = useState(false);
   const [showBible, setShowBible] = useState(false);
 
-  const dateKey = new Date().toISOString().slice(0, 10);
+  const dateKey = formatDateKey(new Date());
 
   const handleStatusChange = useCallback(
     (newStatus: PromptStatus) => {
