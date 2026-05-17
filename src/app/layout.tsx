@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, Lora } from "next/font/google";
-import { SessionProvider } from "@/components/session-provider";
 import { Nav } from "@/components/nav";
 import "./globals.css";
 
@@ -27,11 +26,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${lora.variable}`}>
-      <body className="min-h-screen">
-        <SessionProvider>
-          <Nav />
-          <main>{children}</main>
-        </SessionProvider>
+      <body className="min-h-screen bg-warm-50 text-warm-950 antialiased">
+        <Nav />
+        <main>{children}</main>
       </body>
     </html>
   );

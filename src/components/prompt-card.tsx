@@ -1,81 +1,53 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { BookOpen } from "lucide-react";
 import { ActionButtons } from "./action-buttons";
 import { NoteEditor } from "./note-editor";
 import { BibleReaderModal } from "./bible-reader-modal";
-import { AuthModal } from "./auth-modal";
-import type { DailyPrompt, PromptStatus, UserResponse } from "@/types";
+import { saveResponse } from "@/lib/storage";
+import type { PromptSeed } from "@/lib/prompts-data";
+import type { SavedResponse } from "@/lib/storage";
+import type { PromptStatus } from "@/types";
 
 interface PromptCardProps {
-  prompt: DailyPrompt;
-  userResponse: UserResponse | null;
+  prompt: PromptSeed;
+  initialResponse?: SavedResponse | null;
 }
 
-export function PromptCard({ prompt, userResponse }: PromptCardProps) {
-  const { data: session } = useSession();
+export function PromptCard({ prompt, initialResponse }: PromptCardProps) {
   const [status, setStatus] = useState<PromptStatus | null>(
-    (userResponse?.status as PromptStatus) ?? null
+    initialResponse?.status ?? null
   );
-  const [note, setNote] = useState(userResponse?.note ?? "");
+  const [note, setNote] = useState(initialResponse?.note ?? "");
   const [showNote, setShowNote] = useState(false);
   const [showBible, setShowBible] = useState(false);
-  const [showAuth, setShowAuth] = useState(false);
-  const [authAction, setAuthAction] = useState("");
-  const [saving, setSaving] = useState(false);
 
-  const promptDate = new Date(prompt.date).toLocaleDateString("en-US", {
+  const dateKey = new Date().toISOString().slice(0, 10);
+
+  const handleStatusChange = useCallback(
+    (newStatus: PromptStatus) => {
+      const next = status === newStatus ? null : newStatus;
+      setStatus(next);
+      saveResponse(dateKey, { status: next });
+    },
+    [status, dateKey]
+  );
+
+  const handleNoteSave = useCallback(
+    async (newNote: string) => {
+      setNote(newNote);
+      saveResponse(dateKey, { note: newNote });
+    },
+    [dateKey]
+  );
+
+  const promptDate = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
   });
-
-  const saveResponse = useCallback(
-    async (data: { status?: PromptStatus | null; note?: string }) => {
-      if (!session?.user?.id) return;
-      setSaving(true);
-      try {
-        await fetch(`/api/respond/${prompt.id}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-      } catch (e) {
-        console.error("Failed to save", e);
-      } finally {
-        setSaving(false);
-      }
-    },
-    [session, prompt.id]
-  );
-
-  const handleStatusChange = (newStatus: PromptStatus) => {
-    if (!session?.user?.id) {
-      setAuthAction("mark-status");
-      setShowAuth(true);
-      return;
-    }
-    const next = status === newStatus ? null : newStatus;
-    setStatus(next);
-    saveResponse({ status: next });
-  };
-
-  const handleSaveNote = () => {
-    if (!session?.user?.id) {
-      setAuthAction("save-note");
-      setShowAuth(true);
-      return;
-    }
-    setShowNote(true);
-  };
-
-  const handleNoteSave = async (newNote: string) => {
-    setNote(newNote);
-    await saveResponse({ note: newNote });
-  };
 
   return (
     <>
@@ -123,7 +95,7 @@ export function PromptCard({ prompt, userResponse }: PromptCardProps) {
         <ActionButtons
           currentStatus={status}
           onStatusChange={handleStatusChange}
-          onSaveNote={handleSaveNote}
+          onSaveNote={() => setShowNote(true)}
         />
 
         {showNote && (
@@ -132,12 +104,6 @@ export function PromptCard({ prompt, userResponse }: PromptCardProps) {
             onSave={handleNoteSave}
             onClose={() => setShowNote(false)}
           />
-        )}
-
-        {!session?.user?.id && (
-          <p className="text-xs text-warm-400/70 mt-10 text-center">
-            Sign up to save notes and track your journey
-          </p>
         )}
 
         <motion.div
@@ -155,12 +121,6 @@ export function PromptCard({ prompt, userResponse }: PromptCardProps) {
         isOpen={showBible}
         onClose={() => setShowBible(false)}
         passageRef={prompt.scriptureRef}
-      />
-
-      <AuthModal
-        isOpen={showAuth}
-        onClose={() => setShowAuth(false)}
-        action={authAction}
       />
     </>
   );

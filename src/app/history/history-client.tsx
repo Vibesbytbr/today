@@ -1,28 +1,44 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { useSession, signOut } from "next-auth/react";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { HistoryList } from "@/components/history-list";
 import { FilterBar } from "@/components/filter-bar";
+import { getPromptHistory } from "@/lib/prompts-data";
+import { getResponses } from "@/lib/storage";
 import type { PromptWithResponse } from "@/types";
 
 export function HistoryClient() {
-  const { data: session } = useSession();
-  const [prompts, setPrompts] = useState<PromptWithResponse[]>([]);
   const [filter, setFilter] = useState("all");
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch("/api/user/responses")
-      .then((res) => res.json())
-      .then((data) => {
-        setPrompts(data.prompts || []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+  const prompts = useMemo((): PromptWithResponse[] => {
+    const history = getPromptHistory(90);
+    const responses = getResponses();
+
+    return history.map(({ prompt, dateKey, date }) => {
+      const r = responses[dateKey];
+      return {
+        id: `prompt-${dateKey}`,
+        date: date.toISOString(),
+        actionPrompt: prompt.actionPrompt,
+        scriptureRef: prompt.scriptureRef,
+        scriptureText: prompt.scriptureText,
+        sortOrder: prompt.sortOrder,
+        userResponse: r
+          ? {
+              id: `resp-${dateKey}`,
+              userId: "",
+              promptId: `prompt-${dateKey}`,
+              status: r.status,
+              note: r.note,
+              createdAt: date.toISOString(),
+              updatedAt: date.toISOString(),
+            }
+          : null,
+      };
+    });
   }, []);
 
   const filtered = prompts.filter((p) => {
@@ -52,24 +68,7 @@ export function HistoryClient() {
         <FilterBar current={filter} onChange={setFilter} />
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-5 h-5 border-2 border-sage-400 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
-        <HistoryList prompts={filtered} />
-      )}
-
-      {session?.user && (
-        <div className="mt-10 text-center">
-          <button
-            onClick={() => signOut()}
-            className="text-xs text-warm-300 hover:text-warm-500 transition-colors"
-          >
-            Sign out
-          </button>
-        </div>
-      )}
+      <HistoryList prompts={filtered} />
     </motion.div>
   );
 }

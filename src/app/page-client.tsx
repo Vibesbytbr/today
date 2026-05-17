@@ -1,38 +1,16 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { TodayAnimation } from "@/components/today-animation";
 import { PromptCard } from "@/components/prompt-card";
-import type { DailyPrompt, UserResponse } from "@/types";
+import type { PromptSeed } from "@/lib/prompts-data";
 
 interface PageClientProps {
-  prompt: DailyPrompt | null;
-  userResponse: UserResponse | null;
+  prompt: PromptSeed;
 }
 
-export function PageClient({
-  prompt: initialPrompt,
-  userResponse: initialResponse,
-}: PageClientProps) {
+export function PageClient({ prompt }: PageClientProps) {
   const [animationDone, setAnimationDone] = useState(false);
-  const [prompt, setPrompt] = useState<DailyPrompt | null>(initialPrompt);
-  const [userResponse, setUserResponse] = useState<UserResponse | null>(
-    initialResponse
-  );
-
-  useEffect(() => {
-    if (!initialPrompt) {
-      fetch("/api/prompt/today")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.prompt) {
-            setPrompt(data.prompt);
-            setUserResponse(data.userResponse ?? null);
-          }
-        })
-        .catch((e) => console.error("Failed to fetch prompt:", e));
-    }
-  }, [initialPrompt]);
 
   const handleAnimationDone = useCallback(() => {
     setAnimationDone(true);
@@ -43,14 +21,7 @@ export function PageClient({
       {!animationDone && <TodayAnimation onDone={handleAnimationDone} />}
 
       <div className="min-h-screen flex items-center justify-center pb-16">
-        {animationDone &&
-          (prompt ? (
-            <PromptCard prompt={prompt} userResponse={userResponse} />
-          ) : (
-            <p className="text-warm-400 text-sm">
-              Could not load today&rsquo;s prompt.
-            </p>
-          ))}
+        {animationDone && <PromptCard prompt={prompt} />}
       </div>
     </>
   );

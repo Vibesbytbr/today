@@ -1,8 +1,14 @@
-import { PrismaClient } from "@prisma/client";
+interface PromptEntry {
+  actionPrompt: string;
+  scriptureRef: string;
+  scriptureText: string;
+}
 
-const prisma = new PrismaClient();
+export interface PromptSeed extends PromptEntry {
+  sortOrder: number;
+}
 
-const prompts = [
+const PROMPT_DATA: PromptEntry[] = [
   { actionPrompt: "Speak gently today.", scriptureRef: "Proverbs 15:1", scriptureText: "A gentle answer turns away wrath, but a harsh word stirs up anger." },
   { actionPrompt: "Rest without guilt today.", scriptureRef: "Matthew 11:28", scriptureText: "Come to me, all you who are weary and burdened, and I will give you rest." },
   { actionPrompt: "Be slower to react.", scriptureRef: "James 1:19", scriptureText: "Everyone should be quick to listen, slow to speak and slow to become angry." },
@@ -95,31 +101,41 @@ const prompts = [
   { actionPrompt: "End today with gratitude.", scriptureRef: "Psalm 92:1", scriptureText: "It is good to praise the Lord and make music to your name, O Most High." },
 ];
 
-async function main() {
-  console.log("Seeding database...");
-
-  for (let i = 0; i < prompts.length; i++) {
-    const p = prompts[i];
-    await prisma.promptSeed.upsert({
-      where: { sortOrder: i + 1 },
-      update: {},
-      create: {
-        actionPrompt: p.actionPrompt,
-        scriptureRef: p.scriptureRef,
-        scriptureText: p.scriptureText,
-        sortOrder: i + 1,
-      },
-    });
-  }
-
-  console.log(`Seeded ${prompts.length} prompts.`);
+export function getSortOrderForDate(date: Date): number {
+  const start = new Date(date.getFullYear(), 0, 0);
+  const diff = date.getTime() - start.getTime();
+  const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
+  return (dayOfYear % 90) + 1;
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+export function getPromptForDate(date: Date): PromptSeed {
+  const sortOrder = getSortOrderForDate(date);
+  return { ...PROMPT_DATA[sortOrder - 1], sortOrder };
+}
+
+export function getTodayPrompt(): PromptSeed {
+  return getPromptForDate(new Date());
+}
+
+export function formatDateKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+export function getPromptHistory(count: number): Array<{
+  dateKey: string;
+  prompt: PromptSeed;
+  date: Date;
+}> {
+  const today = new Date();
+  const result = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    result.push({
+      dateKey: formatDateKey(date),
+      prompt: getPromptForDate(date),
+      date,
+    });
+  }
+  return result;
+}
