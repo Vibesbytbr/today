@@ -124,21 +124,32 @@ export function formatDateKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-export function getPromptHistory(count: number): Array<{
-  dateKey: string;
-  prompt: PromptSeed;
-  date: Date;
-}> {
-  const today = new Date();
-  const result = [];
-  for (let i = count - 1; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    result.push({
-      dateKey: formatDateKey(date),
-      prompt: getPromptForDate(date),
-      date,
-    });
+function daysBetween(a: string, b: string): number {
+  const da = new Date(a + "T12:00:00");
+  const db = new Date(b + "T12:00:00");
+  return Math.round((db.getTime() - da.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+}
+
+export function getUnlockedDays(
+  startDateKey: string
+): Array<{ dateKey: string; prompt: PromptSeed; date: Date }> {
+  const todayKey = formatDateKey(new Date());
+  const count = daysBetween(startDateKey, todayKey);
+
+  if (count <= 0) {
+    const d = new Date(todayKey + "T12:00:00");
+    return [{ dateKey: todayKey, prompt: getPromptForDate(d), date: d }];
   }
+
+  const max = Math.min(count, 90);
+  const result = [];
+
+  for (let i = 0; i < max; i++) {
+    const d = new Date(todayKey + "T12:00:00");
+    d.setDate(d.getDate() - i);
+    const key = formatDateKey(d);
+    result.push({ dateKey: key, prompt: getPromptForDate(d), date: d });
+  }
+
   return result;
 }

@@ -4,6 +4,7 @@ export interface SavedResponse {
 }
 
 const STORAGE_KEY = "today_responses";
+const START_KEY = "today_start";
 
 export function getResponses(): Record<string, SavedResponse> {
   if (typeof window === "undefined") return {};
@@ -29,7 +30,20 @@ export function saveResponse(
   localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
 }
 
-export function clearResponses(): void {
+export function getStartDate(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(START_KEY);
+}
+
+export function setStartDate(dateKey: string): void {
+  if (typeof window === "undefined") return;
+  if (!localStorage.getItem(START_KEY)) {
+    localStorage.setItem(START_KEY, dateKey);
+  }
+}
+
+export function clearAll(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(START_KEY);
 }

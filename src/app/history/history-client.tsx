@@ -6,18 +6,21 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { HistoryList } from "@/components/history-list";
 import { FilterBar } from "@/components/filter-bar";
-import { getPromptHistory } from "@/lib/prompts-data";
-import { getResponses } from "@/lib/storage";
+import { getUnlockedDays } from "@/lib/prompts-data";
+import { getResponses, getStartDate } from "@/lib/storage";
 import type { PromptWithResponse } from "@/types";
 
 export function HistoryClient() {
   const [filter, setFilter] = useState("all");
 
   const prompts = useMemo((): PromptWithResponse[] => {
-    const history = getPromptHistory(90);
+    const start = getStartDate();
+    if (!start) return [];
+
+    const days = getUnlockedDays(start);
     const responses = getResponses();
 
-    return history.map(({ prompt, dateKey, date }) => {
+    return days.map(({ prompt, dateKey, date }) => {
       const r = responses[dateKey];
       return {
         id: `prompt-${dateKey}`,
@@ -68,7 +71,13 @@ export function HistoryClient() {
         <FilterBar current={filter} onChange={setFilter} />
       </div>
 
-      <HistoryList prompts={filtered} />
+      {prompts.length === 0 ? (
+        <p className="text-warm-400 text-sm text-center py-12">
+          Come back tomorrow to start your history.
+        </p>
+      ) : (
+        <HistoryList prompts={filtered} />
+      )}
     </motion.div>
   );
 }
