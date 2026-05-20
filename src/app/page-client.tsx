@@ -4,18 +4,18 @@ import { useState, useEffect, useCallback } from "react";
 import { TodayAnimation } from "@/components/today-animation";
 import { PromptCard } from "@/components/prompt-card";
 import { getResponse, getStartDate, setStartDate } from "@/lib/storage";
-import { formatDateKey } from "@/lib/prompts-data";
+import { getTodayPrompt, formatDateKey } from "@/lib/prompts-data";
 import type { PromptSeed } from "@/lib/prompts-data";
+import type { SavedResponse } from "@/lib/storage";
 
-interface PageClientProps {
-  prompt: PromptSeed;
-}
-
-export function PageClient({ prompt }: PageClientProps) {
+export function PageClient() {
   const [animationDone, setAnimationDone] = useState(false);
-  const initialResponse = getResponse(formatDateKey(new Date()));
+  const [prompt, setPrompt] = useState<PromptSeed | null>(null);
+  const [initialResponse, setInitialResponse] = useState<SavedResponse | null>(null);
 
   useEffect(() => {
+    setPrompt(getTodayPrompt());
+    setInitialResponse(getResponse(formatDateKey(new Date())));
     if (!getStartDate()) {
       setStartDate(formatDateKey(new Date()));
     }
@@ -30,7 +30,7 @@ export function PageClient({ prompt }: PageClientProps) {
       {!animationDone && <TodayAnimation onDone={handleAnimationDone} />}
 
       <div className="min-h-screen flex items-center justify-center pb-16">
-        {animationDone && (
+        {animationDone && prompt && (
           <PromptCard prompt={prompt} initialResponse={initialResponse} />
         )}
       </div>
